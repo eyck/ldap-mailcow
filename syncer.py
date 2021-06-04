@@ -26,7 +26,7 @@ def main():
 
     api.api_host = config['API_HOST']
     api.api_key = config['API_KEY']
-
+    print("API KEY:%s, API_HOST:%s"%(config['API_KEY'], config['API_HOST']))
     while (True):
         sync()
         interval = int(config['SYNC_INTERVAL'])
@@ -38,14 +38,25 @@ def sync():
     ldap_connector.set_option(ldap.OPT_REFERRALS, 0)
     ldap_connector.simple_bind_s(config['LDAP_BIND_DN'], config['LDAP_BIND_DN_PASSWORD'])
 
-    ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
+    if config['LDAP_TYPE'] == 'ad':
+        ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
                 config['LDAP_FILTER'], 
                 ['userPrincipalName', 'cn', 'userAccountControl'])
 
-    ldap_results = map(lambda x: (
-        x[1]['userPrincipalName'][0].decode(),
-        x[1]['cn'][0].decode(),
-        False if int(x[1]['userAccountControl'][0].decode()) & 0b10 else True), ldap_results)
+        ldap_results = map(lambda x: (
+            x[1]['userPrincipalName'][0].decode(),
+            x[1]['cn'][0].decode(),
+            False if int(x[1]['userAccountControl'][0].decode()) & 0b10 else True), ldap_results)
+    else:
+        ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
+                config['LDAP_FILTER'], ['uid', 'cn'])
+
+        ldap_results = map(lambda x: (
+            x[1]['uid'][0].decode(),
+            x[1]['cn'][0].decode(),
+            True), ldap_results)
+
+    logging.info (dir(ldap_results))
 
     filedb.session_time = datetime.datetime.now()
 
@@ -147,11 +158,11 @@ def read_config():
 
     config['LDAP_FILTER'] = os.environ['LDAP-MAILCOW_LDAP_FILTER'] if 'LDAP-MAILCOW_LDAP_FILTER' in os.environ else '(&(objectClass=user)(objectCategory=person))'
     config['SOGO_LDAP_FILTER'] = os.environ['LDAP-MAILCOW_SOGO_LDAP_FILTER'] if 'LDAP-MAILCOW_SOGO_LDAP_FILTER' in os.environ else "objectClass='user' AND objectCategory='person'"
-
+    config['LDAP_TYPE'] =  os.environ['LDAP-MAILCOW_LDAP_TYPE'] if 'LDAP-MAILCOW_LDAP_TYPE' in os.environ else 'ad'
     return config
 
 def read_dovecot_passdb_conf_template():
-    with open('templates/dovecot/ldap/passdb.conf') as f:
+    with open('templates/dovecot/ldap/passdb.%s.conf'%config['LDAP_TYPE']) as f:
         data = Template(f.read())
 
     return data.substitute(
@@ -160,7 +171,10 @@ def read_dovecot_passdb_conf_template():
         )
 
 def read_sogo_plist_ldap_template():
-    with open('templates/sogo/plist_ldap') as f:
+
+    print ('templates/sogo/plist_ldap.%s'%config['LDAP_TYPE'])
+
+    with open('templates/sogo/plist_ldap.%s'%config['LDAP_TYPE']) as f:
         data = Template(f.read())
 
     return data.substitute(
