@@ -18,7 +18,20 @@ def __post_request(url, json_data):
     if rsp['type'] != 'success':
         sys.exit(f"API {url}: {rsp['type']} - {rsp['msg']}")
 
+def add_domain(domain):
+    json_data = {
+            'domain':domain,
+            'aliases':400,
+            'mailboxes': 100,
+            'defquota':3072,
+            'maxquota':10240,
+            'quota':10240,
+            'active':1
+            }
+    __post_request('api/v1/add/domain', json_data)
+
 def add_user(email, name, active):
+    print("add user {}, email {}, active {}".format(name, email, active))
     password = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
     json_data = {
         'local_part':email.split('@')[0],
@@ -28,7 +41,6 @@ def add_user(email, name, active):
         'password2':password,
         "active": 1 if active else 0
     }
-
     __post_request('api/v1/add/mailbox', json_data)
 
 def edit_user(email, active=None, name=None):
@@ -50,13 +62,30 @@ def __delete_user(email):
 
     __post_request('api/v1/delete/mailbox', json_data)
 
+def check_domain(email):
+    domain = email.split('@')[1]
+    url = f"{api_host}/api/v1/get/domain/{domain}"
+    headers = {'X-API-Key': api_key, 'Content-type': 'application/json'}
+    req = requests.get(url, headers=headers)
+    rsp = req.json()
+    req.close()
+    if not isinstance(rsp, dict):
+        sys.exit("API get/domain: got response of a wrong type")
+
+    if (not rsp):
+        return (False, domain)
+
+    if 'active_int' not in rsp and rsp['type'] == 'error':
+        sys.exit(f"API {url}: {rsp['type']} - {rsp['msg']}")
+    
+    return (True, domain)
+
 def check_user(email):
     url = f"{api_host}/api/v1/get/mailbox/{email}"
     headers = {'X-API-Key': api_key, 'Content-type': 'application/json'}
     req = requests.get(url, headers=headers)
     rsp = req.json()
     req.close()
-    
     if not isinstance(rsp, dict):
         sys.exit("API get/mailbox: got response of a wrong type")
 

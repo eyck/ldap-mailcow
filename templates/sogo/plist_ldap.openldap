@@ -10,7 +10,7 @@
     <key>IDFieldName</key>
     <string>cn</string>
     <key>UIDFieldName</key>
-    <string>userPrincipalName</string>
+    <string>uid</string>
 
     <key>baseDN</key>
     <string>$ldap_base_dn</string>

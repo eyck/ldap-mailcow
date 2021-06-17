@@ -28,7 +28,10 @@ def main():
     api.api_key = config['API_KEY']
     print("API KEY:%s, API_HOST:%s"%(config['API_KEY'], config['API_HOST']))
     while (True):
-        sync()
+        try:
+            sync()
+        except:
+            logging.error("An exception occured")
         interval = int(config['SYNC_INTERVAL'])
         logging.info(f"Sync finished, sleeping {interval} seconds before next cycle")
         time.sleep(interval)
@@ -49,22 +52,28 @@ def sync():
             False if int(x[1]['userAccountControl'][0].decode()) & 0b10 else True), ldap_results)
     else:
         ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
-                config['LDAP_FILTER'], ['uid', 'cn'])
-
+                config['LDAP_FILTER'], ['uid', 'cn', 'mail'])
         ldap_results = map(lambda x: (
-            x[1]['uid'][0].decode(),
+            x[1]['mail'][0].decode(),
             x[1]['cn'][0].decode(),
             True), ldap_results)
 
-    logging.info (dir(ldap_results))
+    logging.debug (dir(ldap_results))
 
     filedb.session_time = datetime.datetime.now()
 
     for (email, ldap_name, ldap_active) in ldap_results:
         (db_user_exists, db_user_active) = filedb.check_user(email)
+        (api_domain_exists, api_domain_name) = api.check_domain(email)
         (api_user_exists, api_user_active, api_name) = api.check_user(email)
 
+        logging.debug (f"checking user {ldap_name} having email {email} for domain {api_domain_name}")
+
         unchanged = True
+        if not api_domain_exists:
+            api.add_domain(api_domain_name)
+            logging.info (f"Added domain: {api_domain_name}")
+            unchanged = False
 
         if not db_user_exists:
             filedb.add_user(email, ldap_active)
@@ -167,7 +176,9 @@ def read_dovecot_passdb_conf_template():
 
     return data.substitute(
         ldap_uri=config['LDAP_URI'], 
-        ldap_base_dn=config['LDAP_BASE_DN']
+        ldap_base_dn=config['LDAP_BASE_DN'],
+        ldap_bind_dn=config['LDAP_BIND_DN'],
+        ldap_bind_dn_password=config['LDAP_BIND_DN_PASSWORD']
         )
 
 def read_sogo_plist_ldap_template():
