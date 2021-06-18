@@ -22,6 +22,7 @@
     <key>bindFields</key>
     <array>
         <string>uid</string>
+        <string>mail</string>
     </array>
 
     <key>bindAsCurrentUser</key>
@@ -36,7 +37,7 @@
     <string>$sogo_ldap_filter</string>
 
     <key>isAddressBook</key>
-    <string>NO</string>
+    <string>YES</string>
     <key>displayName</key>
     <string>OpenLDAP</string>
 
