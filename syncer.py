@@ -27,6 +27,7 @@ def main():
     api.api_host = config['API_HOST']
     api.api_key = config['API_KEY']
     print("API KEY:%s, API_HOST:%s"%(config['API_KEY'], config['API_HOST']))
+
     while (True):
         try:
             sync()
@@ -43,7 +44,7 @@ def sync():
 
     if config['LDAP_TYPE'] == 'ad':
         ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
-                config['LDAP_FILTER'], 
+                config['IMPORT_LDAP_FILTER'], 
                 ['userPrincipalName', 'cn', 'userAccountControl'])
 
         ldap_results = map(lambda x: (
@@ -52,13 +53,11 @@ def sync():
             False if int(x[1]['userAccountControl'][0].decode()) & 0b10 else True), ldap_results)
     else:
         ldap_results = ldap_connector.search_s(config['LDAP_BASE_DN'], ldap.SCOPE_SUBTREE, 
-                config['LDAP_FILTER'], ['uid', 'cn', 'mail'])
+                config['IMPORT_LDAP_FILTER'], ['uid', 'cn', 'mail'])
         ldap_results = map(lambda x: (
             x[1]['mail'][0].decode(),
             x[1]['cn'][0].decode(),
             True), ldap_results)
-
-    logging.debug (dir(ldap_results))
 
     filedb.session_time = datetime.datetime.now()
 
@@ -167,6 +166,7 @@ def read_config():
 
     config['LDAP_FILTER'] = os.environ['LDAP-MAILCOW_LDAP_FILTER'] if 'LDAP-MAILCOW_LDAP_FILTER' in os.environ else '(&(objectClass=user)(objectCategory=person))'
     config['SOGO_LDAP_FILTER'] = os.environ['LDAP-MAILCOW_SOGO_LDAP_FILTER'] if 'LDAP-MAILCOW_SOGO_LDAP_FILTER' in os.environ else "objectClass='user' AND objectCategory='person'"
+    config['IMPORT_LDAP_FILTER'] = os.environ['LDAP-MAILCOW_IMPORT_LDAP_FILTER'] if 'LDAP-MAILCOW_IMPORT_LDAP_FILTER' in os.environ else config['LDAP_FILTER']
     config['LDAP_TYPE'] =  os.environ['LDAP-MAILCOW_LDAP_TYPE'] if 'LDAP-MAILCOW_LDAP_TYPE' in os.environ else 'ad'
     return config
 
