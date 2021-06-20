@@ -54,6 +54,7 @@ A python script periodically checks and creates new LDAP accounts and deactivate
     * **Optional** LDAP filters (see example above). SOGo uses special syntax, so you either have to **specify both or none**:
         * `LDAP-MAILCOW_LDAP_FILTER` - LDAP filter to apply, defaults to `(&(objectClass=user)(objectCategory=person))`
         * `LDAP-MAILCOW_SOGO_LDAP_FILTER` - LDAP filter to apply for SOGo ([special syntax](https://sogo.nu/files/docs/SOGoInstallationGuide.html#_authentication_using_ldap)), defaults to `objectClass='user' AND objectCategory='person'`
+    * **Optional** LDAP_TYPE - type of LDAP backend used, values are either 'ad' for ActiveDirectory or 'openldap' for OpenLDAP, defaults to 'ad'.
 
 4. Start additional container: `docker-compose up -d ldap-mailcow`
 5. Check logs `docker-compose logs ldap-mailcow`
@@ -82,6 +83,21 @@ As a workaround, you can hook IMAP authentication directly to mailcow by adding 
         imap_close($mbox);
         return "user";
     }
+```
+
+or in newer versions at [this point](https://github.com/mailcow/mailcow-dockerized/blob/9773d3549e954c1bb89a280294cdfb57f593e254/data/web/inc/functions.inc.php#L902):
+
+```php
+    $mbox = imap_open ("{dovecot:993/imap/ssl/novalidate-cert}INBOX", $user, $pass);
+    if ($mbox != false) {
+       imap_close($mbox);
+       $_SESSION['return'][] =  array(
+         'type' => 'success',
+         'log' => array(__FUNCTION__, $user, '*'),
+         'msg' => array('logged_in_as', $user)
+       );
+       return "user";
+     }
 ```
 
 As a side-effect, It will also allow logging into mailcow UI using mailcow app passwords (since they are valid for IMAP). **It is not a supported solution with mailcow and has to be done only at your own risk!**

@@ -33,6 +33,12 @@
     <key>canAuthenticate</key>
     <string>YES</string>
 
+    <key>lookupFields</key>
+    <array>
+        <string>*</string>
+        <string>memberOf</string>
+    </array>
+
     <key>filter</key>
     <string>$sogo_ldap_filter</string>
 
